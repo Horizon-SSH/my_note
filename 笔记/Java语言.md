@@ -1,5 +1,7 @@
 #  JavaSE 基础
 
+[TOC]
+
 ## 第一章：语法基础
 
 ### 一、基本框架及语法
@@ -12737,4 +12739,4 @@ public class XmlParser {
 
 
 
-**Java 基础部分完结，反射部分见《数据库 MySQL》……**
+**Java 基础部分完结，反射部分见《[数据库 MySQL](数据库 MySQL.md)》……**
