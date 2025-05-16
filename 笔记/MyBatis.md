@@ -1,6 +1,6 @@
 # MyBatis 框架
 
-**SSM框架内容分为如下几个章节，每个章节对应一个文件：《[Maven](Maven.md)》、《[Spring](Spring.md)》、《[MyBatis](MyBatis.md)》、《[SpringMVC](SpringMVC.md)》、《[SSM整合](SSM整合.md)》、《[SpringBoot](SpringBoot.md)》、《[MyBatis-Plus](MyBatis-Plus.md)》。**
+**SSM框架内容分为如下几个章节，每个章节对应一个文件：[《Maven》](Maven.md)、[《Spring》](Spring.md)、[《MyBatis》](MyBatis.md)、[《SpringMVC》](SpringMVC.md)、[《SSM整合》](SSM整合.md)、[《SpringBoot》](SpringBoot.md)、[《MyBatis-Plus》](MyBatis-Plus.md)。**
 
 
 
@@ -3180,4 +3180,4 @@ MyBatisX 是一个 MyBatis 的代码生成插件，可以通过简单的配置�
 
 
 
-**Spring 框架后续内容见：《[SpringMVC](SpringMVC.md)》……**
+**Spring 框架后续内容见：[《SpringMVC》](SpringMVC.md)……**
