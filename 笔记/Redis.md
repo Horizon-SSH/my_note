@@ -1560,7 +1560,184 @@ age
 
 ## 第二章：Redis 进阶
 
-### 一、缓存
+### 一、Redis 的新数据类型
+
+#### （1）Bitmap 位图
+
+Bitmap（位图）是一种特殊的字符串数据类型，它利用字符串类型键（key）来存储一系列连续的二进制位（bits），每个位可以独立地表示一个布尔值（0 或 1）。这种数据结构非常适合用于存储和操作大量二值状态的数据，尤其在需要高效空间利用率和特定位操作场景中表现出色。
+
+Redis 中是利用string类型数据结构实现 BitMap，因此最大上限是512M，转换为bit则是 2<sup>32</sup>个 bit 位，初始值全为0。
+
+**Bitmap 常用命令：**
+
+```bash
+# 在指定键key中的指定位置offset存入一个0或1
+setbit key offset 0/1
+
+# 获取指定key指定位置的值0或1
+getbit key offset
+
+# 统计指定范围内BitMap中值为1的bit位的数量
+bitcount key [start end]
+
+# 操作（查询、修改、自增等）BitMap中bit数组中的指定位置（offset）的值
+bitfield key [get type offset] [set type offset 0/1] [incrby type offset increment]
+
+# 从指定位置开始获取key数组，并以指定类型返回，u8表示十进制
+bitfield_ro key get type offset
+
+# 查找key数组中指定范围内第一个0或1出现的位置
+bitpos key bit [start] [end]
+
+# 将多个BitMap的结果做位运算（与and、非not、或or、异或xor），将结果存储至destkey中
+bitop operation destkey key [key ...]
+```
+
+<font color="blue">示例：</font>
+
+```bash
+192.168.56.128:6379> setbit bit1 0 1
+0
+192.168.56.128:6379> setbit bit1 3 1
+0
+192.168.56.128:6379> setbit bit1 4 1
+0
+192.168.56.128:6379> setbit bit1 6 1
+0
+192.168.56.128:6379> setbit bit1 7 1
+0
+
+# 此时的bit1为10011011
+192.168.56.128:6379> bitfield_ro bit1 get u8 0
+155
+
+192.168.56.128:6379> getbit bit1 0
+1
+192.168.56.128:6379> bitcount bit1
+5
+# 从0开始取bit1前两位为无符号数（10），得到的是十进制
+192.168.56.128:6379> bitfield bit1 get u2 0
+2
+# 求bit1第一个0出现的位置
+192.168.56.128:6379> bitpos bit1 0
+1
+# 取反运算
+192.168.56.128:6379> bitop not bit2 bit1
+1
+```
+
+#### （2）HyperLogLog
+
+在工作当中，我们经常会遇到与统计相关的功能需求：
+
+* UV：全称Unique Visitor，也叫独立访客量，是指通过互联网访问、浏览这个网页的自然人。1天内同一个用户多次访问该网站，只记录1次。
+* PV：全称Page View，也叫页面访问量或点击量，用户每访问网站的一个页面，记录1次PV，用户多次打开页面，则记录多次PV。往往用来衡量网站的流量。
+
+通常来说UV会比PV大很多，所以衡量同一个网站的访问量，我们需要综合考虑很多因素，所以只是单纯的把这两个值作为一个参考值。
+
+统计网站PV可以使用 Redis 的 `incr`、`incrby` 轻松实现。但像UV、独立IP数、搜索记录数等需要去重和计数的问题不好解决。这种求集合中不重复元素个数的问题称为基数问题。
+
+什么是基数？比如数据集 {1, 3, 5, 7, 5, 7, 8}，这个数据集的基数集为 {1, 3, 5 ,7, 8}，基数（不重复元素）为5。 基数估计就是在误差可接受的范围内，快速计算基数。
+
+解决基数问题有很多种方案：
+
+1. 数据存储在 MySQL 表中，使用 `distinct count` 计算不重复个数；
+2. 使用 Redis 提供的 `hash`、`set`、`bitmaps` 等数据结构来处理以上的方案结果精确，但随着数据不断增加，导致占用空间越来越大，对于非常大的数据集是不切实际的。
+
+为了降低一定的精度来平衡存储空间，Redis 推出了 HyperLogLog，HyperLogLog 是用来做基数统计的算法。HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定的、并且是很小的。在 Redis 里面，每个 HyperLogLog 键只需要花费 12 KB 内存，就可以计算接近 2<sup>64</sup> 个不同元素的基数。这和计算基数时，元素越多耗费内存就越多的集合形成鲜明对比。但是，因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素。
+
+**HyperLogLog 常用命令：**
+
+```bash
+# 添加元素，返回0表示集合中没有更新元素
+pfadd key element1 element2 ...
+
+# 统计集合中的元素数量
+pfcount key
+
+# 合并一个或多个集合并存储至destkey中
+pfmerge destkey sourcekey1 sourcekey2 ...
+```
+
+<font color="blue">示例：</font>
+
+```bash
+192.168.56.128:6379> pfadd k1 java
+1
+192.168.56.128:6379> pfadd k1 html
+1
+192.168.56.128:6379> pfadd k1 css
+1
+192.168.56.128:6379> pfadd k1 java
+0
+# 统计
+192.168.56.128:6379> pfcount k1
+3
+# 合并k1,k2到k2
+192.168.56.128:6379> pfmerge k2 k1 k2
+OK
+192.168.56.128:6379> pfcount k2
+4
+```
+
+#### （3）Geospatial
+
+Redis 3.2 中增加了对GEO类型的支持。GEO，Geographic，地理信息的缩写。该类型就是元素的2维坐标，在地图上就是经纬度。Redis 基于该类型，提供了经纬度设置，查询，范围查询，距离查询，经纬度 Hash 等常见操作。
+
+**GEO 常用命令：**
+
+```bash
+# 将一个或多个地理坐标（经度longitude、纬度latitude、名称value）添加到指定 key
+geoadd key longitude latitude value
+
+# 计算两个成员间的距离，单位：m（米，默认）、km（千米）、mi（英里）、ft（英尺）。
+geodist key member1 member2 [m/km/mi/ft]
+
+# 返回成员的Geohash字符串（将二维经纬度编码为一维字符串，便于比较位置相似性）
+geohash key member1 member2 ...
+
+# 返回指定key的指定成员的坐标
+geopos key member1 member2 ...
+
+# 根据给定的中心点坐标和半径，查找附近的成员。
+georadius key longitude latitude radius [m/km/mi/ft]
+
+# 根据指定的查询参数在Redis的地理空间数据集中搜索符合条件的位置。
+geosearch key FROMMEMBER member|FROMLONLAT longitude latitude BYRADIUS radius width height M|KM|FT|MI [ASC|DESC] [COUNT count [ANY]] [WITHCOORD] [WITHDIST] [WITHHASH]
+
+# geosearchstore与GEOSEARCH功能一致，不过可以把结果存储到一个指定的key
+```
+
+注意：两极（南极，北极）无法直接添加，一般会下载城市数据，直接通过 Java 程序一次性导入。有效的经度从 -180 度到 180 度。有效的纬度从 -85.05112878 度到 85.05112878 度。当坐标位置超出指定范围时，该命令将会返回一个错误。已经添加的数据，是无法再次添加的。
+
+<font color="blue">示例：</font>
+
+```bash
+# 添加北京 上海 深圳 重庆
+192.168.56.128:6379> geoadd city 121.47 31.23 shanghai
+1
+192.168.56.128:6379> geoadd city 106.50 29.53 chongqing 114.05 22.52 shenzhen 116.38 39.90 beijing
+3
+# 计算北京到上海的距离
+192.168.56.128:6379> geodist city beijing shanghai
+1068153.5181
+# 返回北京上海的哈希值
+192.168.56.128:6379> geohash city beijing shanghai
+wx4fbr966e0
+wtw3sj5zbj0
+# 获取北京的坐标
+192.168.56.128:6379> geopos city beijing
+116.38000041246414185
+39.90000009167092543
+# 以(110,30)为圆心，1000km为半径查找city中的成员
+192.168.56.128:6379> georadius city 110 30 1000 km
+chongqing
+shenzhen
+
+
+```
+
+### 二、缓存
 
 #### （1）缓存概述
 
@@ -1736,7 +1913,7 @@ age
 | 互斥锁   | 没有额外的内存消耗，保证一致性，实现简单 | 线程需要等待，性能受影响，可能有死锁风险 |
 | 逻辑过期 | 线程无需等待，性能较好                   | 不保证一致性，有额外内存消耗，实现复杂   |
 
-### 二、分布式锁
+### 三、分布式锁
 
 #### （1）分布式锁介绍
 
@@ -1802,7 +1979,7 @@ Redis 提供了 Lua 脚本功能，在一个脚本中编写多条 Redis 命令�
 redis.call('命令名称', 'key', '其它参数', ...)
 ```
 
-如果脚本中的 key、value 不想写死，可以作为参数传递。key类型参数会放入 KEYS 数组，其它参数会放入 ARGV 数组，在脚本中可以从KEYS和ARGV数组获取这些参数：
+如果脚本中的 key、value 不想固定写，可以作为参数传递。key类型参数会放入 KEYS 数组，其它参数会放入 ARGV 数组，在脚本中可以从KEYS和ARGV数组获取这些参数：
 
 ```lua
 EVAL "return redis.call('set', KEYS[1], ARGV[1])" n key value
@@ -1810,8 +1987,6 @@ EVAL "return redis.call('set', KEYS[1], ARGV[1])" n key value
 ```
 
 #### （3）Redisson
-
-##### 1. Redisson 简介
 
 **Redis 实现分布式锁的问题：**
 
@@ -1826,7 +2001,7 @@ Redisson 是一个在Redis的基础上实现的Java驻内存数据网格（In-Me
 
 
 
-#### 三、消息队列
+#### 四、消息队列
 
 #### （1）消息队列简介
 
@@ -1838,7 +2013,135 @@ Redisson 是一个在Redis的基础上实现的Java驻内存数据网格（In-Me
 * 生产者：发送消息到消息队列；
 * 消费者：从消息队列获取消息并处理消息；
 
+使用队列的好处在于解耦，常见的消息队列有 RabbitMQ，RocketMQ，Kafka等，也可以用 Redis 来实现MQ。
+
+#### （2）基于 Redis 实现消息队列
+
+##### 1. 基于 Redis 的 List 实现
+
+Redis的 List 数据结构是一个双向链表，很容易模拟出队列效果。
+
+队列是入口和出口不在一边，因此我们可以利用：LPUSH 结合 RPOP、或者 RPUSH 结合 LPOP来实现。不过要注意的是，当队列中没有消息时 RPOP 或 LPOP 操作会返回 null，并不像 JVM 的阻塞队列那样会阻塞并等待消息。因此这里应该使用 BRPOP 或者 BLPOP 来实现阻塞效果。
+
+优点：
+
+* 利用Redis存储，不受限于JVM内存上限；
+* 基于Redis的持久化机制，数据安全性有保证；
+* 可以满足消息有序性；
+
+缺点：
+
+* 无法避免消息丢失；
+* 只支持单消费者。
+
+##### 2. 基于 PubSub 的消息队列
+
+PubSub（发布订阅）是 Redis2.0 版本引入的消息传递模型。发送者 (pub) 发送消息，订阅者 (sub) 接收消息。消费者可以订阅一个或多个channel，生产者向对应channel发送消息后，所有订阅者都能收到相关消息。
+
+**发布订阅语法：**
+
+```bash
+SUBSCRIBE channel [channel]  	# 订阅一个或多个频道
+PUBLISH channel msg 			# 向一个频道发送消息
+PSUBSCRIBE pattern[pattern] 	# 订阅与pattern格式匹配的所有频道
+```
+
+<font color="blue">示例：</font>
+
+```bash
+
+```
 
 
 
+##### 3. 基于 Stream 的消息队列
 
+Stream 是 Redis 5.0 引入的一种新数据类型，可以实现一个功能非常完善的消息队列。
+
+**语法：**
+
+```bash
+# 发送消息：
+# NOMKSTREAM为如果消息队列不存在则自动创建，默认是自动创建
+# ID是消息的唯一ID，设置*为Redis自动生成，格式是"时间戳-递增数字"
+# 发送到消息队列的消息为键值对的格式Entry = <field, value>
+XADD key [NOMKSTREAM] *|ID field1 value1 ...
+
+# 读取消息：
+# count为每次读取的最大消息数量
+# BLOCK为阻塞时长，默认没有阻塞时长
+# key为消息队列名
+# ID为起始ID，只返回大于该ID的消息，0代表第一个消息，$代表最新的消息
+XREAD [COUNT count] [BLOCK milliseconds] STREAMS key1 key2 ... ID1 ID2 ...
+```
+
+注意：当我们指定起始ID为 `$` 时，代表读取最新的消息，如果我们处理一条消息的过程中，又有超过1条以上的消息到达队列，则下次获取时也只能获取到最新的一条，会出现漏读消息的问题。
+
+STREAM类型消息队列的 `XREAD` 命令特点：
+
+* 消息可回溯；
+* 一个消息可以被多个消费者读取；
+* 可以阻塞读取；
+* 有消息漏读的风险。
+
+##### 4. Stream 消息者组
+
+消费者组（Consumer Group）：将多个消费者划分到一个组中，监听同一个队列。
+
+消息者组的特点：
+
+- 消息分流：队列中的消息会分流给组内的不同消费者，而不是重复消费，从而加快消息处理的速度；
+- 消息标示：消费者组会维护一个标示，记录最后一个呗处理的消息，即使消费者宕机重启，也能保证从标示之后读取消息，确保每个消息都被消费；
+- 消息确认：消费者获取消息后，消息处于 pending 状态，并存入一个 pending-list 中。当处理完成后需要通过 `XACK` 命令来确认消息，标记消息为已处理，才会从 pending-list 中移除。
+
+**Stream 消费者组语法：**
+
+```bash
+# 创建消费者组：
+# key是消息队列名
+# groupName是消费者组名
+# ID是起始ID，只返回大于该ID的消息，0代表第一个消息，$代表最新的消息
+# NOMKSTREAM为如果消息队列不存在则自动创建，默认是自动创建
+XGROUP CREATE key groupName ID [MKSTREAM]
+
+# 删除消费者组
+XGROUP DESTORY key groupName
+
+# 给指定的消费者组添加消费者
+XGROUP CREATECONSUMER key groupname consumername
+
+# 删除消费者组中的指定消费者
+XGROUP DELCONSUMER key groupname consumername
+
+# 从消费者组中读取消息：
+# group是消费者组名
+# consumer是消费者名
+# count为每次读取的最大消息数量
+# BLOCK为阻塞时长，默认没有阻塞时长
+# NOACK是无需手动ACK，获取到消息后自动确认
+# STREAMS key是指定队列名称
+# ID为起始ID，">"为从下一个未消费的消息开始，其他则根据指定id从pending-list中获取已消费但未确认的消息，例如0，是从pending-list中的第一个消息开始
+XREADGROUP GROUP group consumer [COUNT count] [BLOCK milliseconds] [NOACK] STREAMS key1 key2... ID1 ID2 ...
+```
+
+STREAM 类型消息队列的 `XREADGROUP` 命令特点：
+
+* 消息可回溯；
+* 可以多消费者争抢消息，加快消费速度；
+* 可以阻塞读取；
+* 没有消息漏读的风险；
+* 有消息确认机制，保证消息至少被消费一次。
+
+**基于 Redis 实现的消息队列对比：**
+
+| 选项         | List                                     | PubSub             | Stream                                                 |
+| ------------ | ---------------------------------------- | ------------------ | ------------------------------------------------------ |
+| 消息持久化   | 支持                                     | 不支持             | 支持                                                   |
+| 阻塞读取     | 支持                                     | 支持               | 支持                                                   |
+| 消息堆积处理 | 受限于内存空间，可以利用多消费者加快处理 | 受限于消费者缓冲区 | 受限于队列长度，可以利用消费者组提高消费速度，减少堆积 |
+| 消息确认机制 | 不支持                                   | 不支持             | 支持                                                   |
+| 消息回溯     | 不支持                                   | 不支持             | 支持                                                   |
+
+
+
+**其他消息队列见《[SpringCloud 微服务](SpringCloud.md)》……**

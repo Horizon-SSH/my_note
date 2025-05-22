@@ -2756,12 +2756,12 @@ enabled
 
 **命令：**
 
-```txt
+```bash
 firewall-cmd --permanent --add-port=端口号/协议				打开端口/允许协议
 firewall-cmd --permanent --remove-port=端口号/协议			关闭端口/禁用协议
 设置成功后要重启防火墙
 
-firewall-cmd --query-port=端口/协议						查询端口/协议是否开启
+firewall-cmd --query-port=端口/协议				  查询端口/协议是否开启
 firewall-cmd --list-ports						查询防火墙所有开放的端口/协议配置
 firewall-cmd --reload							重载防火墙
 ```
