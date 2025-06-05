@@ -271,9 +271,9 @@ YAML（YAML Ain’t Markup Language）是一种基于层次结构的数据序列
 ##### 2. YAML 配置文件语法
 
 1. 数据结构用树形结构呈现，通过缩进来表示层级；
-2. 连续的项目（集合）通过减号 ” - ” 来表示；
-3. 键值结构里面的key/value对用冒号 ” : ” 来分隔；
-4. YAML配置文件的扩展名是 yaml 或 yml。
+2. 连续的项目（集合）通过减号 "-" 来表示；
+3. 键值结构里面的key/value对用冒号 ":" 来分隔；
+4. YAML配置文件的扩展名是 .yaml 或 .yml。
 
 配置文件：`application.yaml`
 
@@ -1097,7 +1097,7 @@ public class EmployeeController {
 
 ##### 2. 声明式事务整合
 
-声明式事务需要导入的依赖是JDBC的依赖，在前面用到过：
+声明式事务需要导入的依赖是 JDBC 的依赖，在前面用到过：
 
 ```xml
 <dependency>

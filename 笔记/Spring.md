@@ -24,7 +24,7 @@
 
 <img src="SSMPicture/分布式架构.png" alt="分布式架构" style="zoom:67%;" />
 
-分布式架构，项目主要应用技术框架：SpringBoot (SSM), SpringCloud , 中间件等。
+分布式架构，项目主要应用技术框架：SpringBoot (SSM)，SpringCloud，中间件等。
 
 ##### 2. 框架的概念
 
@@ -128,7 +128,6 @@ Spring 具体的组件管理动作包含：
 - 组件属性属性赋值；
 - 组件对象之间引用；
 - 组件对象存活周期管理；
-- ......
 
 我们只需要编写元数据（配置文件）告知 Spring 管理哪些类组件和他们的关系即可。
 
@@ -291,7 +290,7 @@ List<String> userList = service.getUsernameList();
 
 ##### 1. 组件信息声明配置（IoC）
 
-Spring IoC 容器管理一个或多个 bean。这些 Bean 是使用您提供给容器的配置元数据创建的（例如，以 XML `<bean/>` 定义的形式）。
+Spring IoC 容器管理一个或多个 Bean。这些 Bean 是使用您提供给容器的配置元数据创建的（例如，以 XML `<bean/>` 定义的形式）。
 
 定义XML配置文件，声明组件类信息，交给 Spring 的 IoC 容器进行组件管理。
 
@@ -450,7 +449,7 @@ public class ClientService {
 ```
 
 - class属性：指定工厂类的全限定符；
-- factory-method: 指定静态工厂方法，注意，该方法必须是static方法。
+- factory-method：指定静态工厂方法，注意，该方法必须是static方法。
 
 **基于实例工厂方法实例化：**
 
@@ -3151,7 +3150,7 @@ public class SpringIoCTest {
 
 #### （1）代理模式补充
 
-**本节只做简单补充，详情见《设计模式》第三章：结构型模式的第六节：代理模式。**
+**本节只做简单补充，详情见《[设计模式](设计模式.md)》第三章：结构型模式的第六节：代理模式。**
 
 ##### 1. 代理模式
 
@@ -3726,11 +3725,11 @@ public class SpringAOPTest {
 
 ##### 3. 获取通知细节信息
 
-**JointPoint 接口：**需要获取方法签名、传入的实参等信息时，可以在通知方法声明 `JoinPoint` 类型的形参。
+**`JointPoint` 接口：**需要获取方法签名、传入的实参等信息时，可以在通知方法声明 `JoinPoint` 类型的形参。
 
-1. JoinPoint 接口通过 `getSignature()` 方法获取目标方法的签名（方法声明时的完整信息）；
+1. `JoinPoint` 接口通过 `getSignature()` 方法获取目标方法的签名（方法声明时的完整信息）；
 2. 通过目标方法签名对象获取方法名；
-3. 通过 JoinPoint 对象获取外界调用目标方法时传入的实参列表组成的数组。
+3. 通过 `JoinPoint` 对象获取外界调用目标方法时传入的实参列表组成的数组。
 
 **方法返回值：**在返回通知中，通过 `@AfterReturning` 注解的 `returning` 属性获取目标方法的返回值。
 
